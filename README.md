@@ -119,13 +119,6 @@ npm install   # first time only
 npm run dev
 ```
 
-Open http://localhost:5173. The dashboard lists every `:Stock` with its latest
-`:RiskScore`; clicking one shows its price history, `:CORRELATES_WITH` peers, and
-the `:RiskScore` provenance trail. The "Ask the model" tab sends a question to
-`POST /api/ask`, which runs the same Ground → Query → Audit loop as the CLI and
-returns the grounded tickers, the generated Cypher, the results, and the audit
-trail — nothing here talks to the local model directly except that endpoint.
-
 ## Notes on scope
 
 - `src/ingest/fetch_investing.py` normalizes CSVs you download manually from
