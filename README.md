@@ -1,0 +1,137 @@
+# Stock Risk KG Agent
+
+An agent that answers questions about stock risk ("How risky is AAPL relative to its
+sector?", "Which stocks are highly correlated with NVDA and also high-risk?") by
+grounding its answers in a Neo4j knowledge graph built from price history — not from
+model memory.
+
+The agent follows a three-step loop:
+
+1. **Ground** — resolve tickers/sectors mentioned in the question to real nodes in the
+   graph (and to vector-similar nodes when the question is fuzzy, e.g. "chipmakers").
+2. **Query** — translate the grounded question into Cypher (`src/query/text2cypher.py`)
+   and execute it against the graph.
+3. **Audit** — every answer is returned together with the Cypher that produced it and
+   the `:Source` / `:Author` / `recorded_at` provenance of any `:RiskScore` used, so a
+   human can verify *why* the agent said what it said.
+
+## Knowledge graph schema
+
+Nodes:
+
+- `(:Stock {ticker, name, sector, listed_exchange})`
+- `(:PricePoint {date, close, volume})`
+- `(:RiskScore {value, level, computed_at})`
+- `(:Sector {name})`
+- `(:Source {url, name})`
+- `(:Author {name})`
+
+Relationships:
+
+- `(:Stock)-[:HAS_PRICE]->(:PricePoint)`
+- `(:Stock)-[:BELONGS_TO]->(:Sector)`
+- `(:Stock)-[:HAS_RISK]->(:RiskScore)`
+- `(:Stock)-[:CORRELATES_WITH {coefficient, window}]->(:Stock)`
+- `(:RiskScore)-[:DERIVED_FROM]->(:Source)`
+- `(:RiskScore)-[:COMPUTED_BY]->(:Author)`
+
+See [src/graph/schema.py](src/graph/schema.py) for the exact constraints/indexes created.
+
+## Project layout
+
+```
+stock-risk-kg-agent/
+├── project_starter.ipynb          # guided notebook with TODOs — start here
+├── data/
+│   ├── raw/                       # investing.com CSV exports (Date,Price,Open,High,Low,Vol.,Change %)
+│   ├── processed/                 # cleaned returns_matrix.parquet
+│   └── stocks-load.cypher         # generated load script (see load_graph.py)
+├── src/
+│   ├── ingest/                    # CSV normalization + returns calculation
+│   ├── graph/                     # schema, Neo4j loading, correlations, vector index
+│   ├── risk/                      # risk features, composite score, optional ML model
+│   ├── query/                     # text2cypher
+│   ├── provenance/                # Source/Author attachment
+│   └── agent/                     # Ground -> Query -> Audit orchestration
+├── tests/
+└── notebooks/                     # worked demos of each stage
+```
+
+## Setup
+
+```bash
+cd stock-risk-kg-agent
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in NEO4J_* and LLM_API_KEY
+```
+
+You need:
+
+- A Neo4j instance (AuraDB free tier works) with the vector index feature (Neo4j 5.11+).
+- A local Ollama server (`ollama serve`) with the model set in `LLM_MODEL` (default
+  `gemma3:4b`) pulled, for `text2cypher`.
+- CSV exports from investing.com for each ticker you care about, dropped into
+  `data/raw/` as `prices_<TICKER>.csv` (the standard investing.com "Download Data"
+  export format).
+
+## Pipeline
+
+```bash
+python -m src.graph.schema                  # constraints + indexes (once, on a fresh database)
+python -m src.ingest.clean_returns          # data/raw/*.csv -> data/processed/returns_matrix.parquet
+python -m src.graph.load_graph              # Stock, PricePoint, Sector nodes
+python -m src.graph.build_correlations      # CORRELATES_WITH edges
+python -m src.graph.vector_index            # embeddings + vector index on :Stock
+python -m src.risk.risk_score               # RiskScore nodes + provenance
+```
+
+Then ask the agent a question:
+
+```bash
+python -m src.agent.risk_agent "How risky is AAPL compared to other stocks in its sector?"
+```
+
+## Web app (front-end + back-end)
+
+A presentation site sits on top of the pipeline above and re-uses it as-is — the
+API layer only calls into `src.graph` / `src.agent`, it doesn't duplicate any logic.
+
+```
+src/api/main.py     # FastAPI wrapper: /api/stocks, /api/stocks/{ticker}, /api/ask
+frontend/            # Vite + React SPA: dashboard, stock detail (price chart,
+                      # correlations, risk provenance), and an "Ask the model" panel
+```
+
+Prerequisites: Neo4j running with the pipeline above already loaded, and
+`ollama serve` running with `LLM_MODEL` pulled (same as the CLI agent).
+
+Run both halves (two terminals):
+
+```bash
+# Terminal 1 — backend, from stock-risk-kg-agent/
+source .venv/bin/activate
+uvicorn src.api.main:app --reload --port 8000
+
+# Terminal 2 — frontend
+cd frontend
+npm install   # first time only
+npm run dev
+```
+
+Open http://localhost:5173. The dashboard lists every `:Stock` with its latest
+`:RiskScore`; clicking one shows its price history, `:CORRELATES_WITH` peers, and
+the `:RiskScore` provenance trail. The "Ask the model" tab sends a question to
+`POST /api/ask`, which runs the same Ground → Query → Audit loop as the CLI and
+returns the grounded tickers, the generated Cypher, the results, and the audit
+trail — nothing here talks to the local model directly except that endpoint.
+
+## Notes on scope
+
+- `src/ingest/fetch_investing.py` normalizes CSVs you download manually from
+  investing.com — it does not scrape the site. investing.com's terms restrict
+  automated access, so this project treats CSV export as a manual, one-time step per
+  ticker.
+- `src/risk/train_model.py` is optional: it trains a small classifier using the
+  rule-based `risk_score.py` output as weak labels, useful once you have enough
+  tickers that eyeballing thresholds stops being reliable.

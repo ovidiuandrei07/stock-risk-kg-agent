@@ -1,0 +1,7 @@
+ticker,name,sector,listed_exchange
+AAPL,Apple Inc.,Technology,NASDAQ
+MSFT,Microsoft Corporation,Technology,NASDAQ
+NVDA,NVIDIA Corporation,Technology,NASDAQ
+JPM,JPMorgan Chase & Co.,Financial Services,NYSE
+XOM,Exxon Mobil Corporation,Energy,NYSE
+SPY,SPDR S&P 500 ETF Trust,Index Fund,NYSE Arca
