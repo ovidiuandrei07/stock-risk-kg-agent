@@ -118,13 +118,3 @@ cd frontend
 npm install   # first time only
 npm run dev
 ```
-
-## Notes on scope
-
-- `src/ingest/fetch_investing.py` normalizes CSVs you download manually from
-  investing.com — it does not scrape the site. investing.com's terms restrict
-  automated access, so this project treats CSV export as a manual, one-time step per
-  ticker.
-- `src/risk/train_model.py` is optional: it trains a small classifier using the
-  rule-based `risk_score.py` output as weak labels, useful once you have enough
-  tickers that eyeballing thresholds stops being reliable.
