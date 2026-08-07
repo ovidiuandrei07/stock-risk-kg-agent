@@ -1,19 +1,22 @@
 # Stock Risk KG Agent
 
-An agent that answers questions about stock risk ("How risky is AAPL relative to its
+A system that answers questions about stock risk ("How risky is AAPL relative to its
 sector?", "Which stocks are highly correlated with NVDA and also high-risk?") by
 grounding its answers in a Neo4j knowledge graph built from price history — not from
-model memory.
+model memory. The LLM is used for a single narrow task, translating the question into
+Cypher; it doesn't plan, choose tools, or act autonomously, so "agent" here means an
+orchestrated pipeline, not an agentic model.
 
-The agent follows a three-step loop:
+The pipeline follows a fixed three-step sequence:
 
 1. **Ground** — resolve tickers/sectors mentioned in the question to real nodes in the
    graph (and to vector-similar nodes when the question is fuzzy, e.g. "chipmakers").
-2. **Query** — translate the grounded question into Cypher (`src/query/text2cypher.py`)
-   and execute it against the graph.
+2. **Query** — the LLM translates the grounded question into Cypher
+   (`src/query/text2cypher.py`), which is then executed against the graph. This is the
+   only step where the model is invoked.
 3. **Audit** — every answer is returned together with the Cypher that produced it and
    the `:Source` / `:Author` / `recorded_at` provenance of any `:RiskScore` used, so a
-   human can verify *why* the agent said what it said.
+   human can verify *why* the system said what it said.
 
 ## Knowledge graph schema
 
@@ -86,7 +89,7 @@ python -m src.graph.vector_index            # embeddings + vector index on :Stoc
 python -m src.risk.risk_score               # RiskScore nodes + provenance
 ```
 
-Then ask the agent a question:
+Then run a question through the pipeline:
 
 ```bash
 python -m src.agent.risk_agent "How risky is AAPL compared to other stocks in its sector?"
@@ -104,7 +107,7 @@ frontend/            # Vite + React SPA: dashboard, stock detail (price chart,
 ```
 
 Prerequisites: Neo4j running with the pipeline above already loaded, and
-`ollama serve` running with `LLM_MODEL` pulled (same as the CLI agent).
+`ollama serve` running with `LLM_MODEL` pulled (same as the CLI pipeline).
 
 Run both halves (two terminals):
 

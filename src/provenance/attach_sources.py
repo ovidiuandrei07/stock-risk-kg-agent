@@ -1,6 +1,6 @@
 """Attach :Source / :Author provenance to :RiskScore nodes.
 
-This is what makes the agent's "Audit" step possible: every risk claim can be
+This is what makes the pipeline's "Audit" step possible: every risk claim can be
 traced back to *what data* produced it and *what code/version* computed it.
 """
 from src.graph.connection import run_query, run_write
@@ -37,7 +37,7 @@ def attach_risk_score_provenance(
 
 
 def get_provenance(score_id: str) -> dict | None:
-    """Fetch the audit trail for a single RiskScore node, for the agent's Audit step."""
+    """Fetch the audit trail for a single RiskScore node, for the pipeline's Audit step."""
     results = run_query(
         """
         MATCH (r:RiskScore {score_id: $score_id})

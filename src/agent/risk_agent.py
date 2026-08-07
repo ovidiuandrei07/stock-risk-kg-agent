@@ -1,7 +1,7 @@
-"""Orchestrates the agent's Ground -> Query -> Audit loop.
+"""Orchestrates the Ground -> Query -> Audit pipeline.
 
 Ground:  resolve tickers named in the question, plus vector-similar stocks for
-         fuzzy phrases (e.g. "chipmakers"), so the agent only reasons about
+         fuzzy phrases (e.g. "chipmakers"), so the query only touches
          entities that actually exist in the graph.
 Query:   translate the (now-grounded) question into Cypher and execute it.
 Audit:   attach the Cypher used and the Source/Author provenance of any

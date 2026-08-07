@@ -1,6 +1,6 @@
 """Translate a natural-language question into a read-only Cypher query and run it.
 
-This is the "Query" step of the agent: the LLM never talks to the user directly
+This is the "Query" step of the pipeline: the LLM never talks to the user directly
 about facts, it only proposes Cypher against the schema below, which we then
 execute and hand back — the LLM's job is translation, not recall.
 """
