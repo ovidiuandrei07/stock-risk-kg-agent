@@ -1,5 +1,8 @@
 # Stock Risk KG Model
 
+Runs on a local LLM served through **[Ollama](https://ollama.com)** — no external LLM
+API calls, no data leaving the machine.
+
 A system that answers questions about stock risk ("How risky is AAPL relative to its
 sector?", "Which stocks are highly correlated with NVDA and also high-risk?") by
 grounding its answers in a Neo4j knowledge graph built from price history — not from
