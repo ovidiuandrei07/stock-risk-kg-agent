@@ -1,4 +1,4 @@
-# Stock Risk KG Agent
+# Stock Risk KG Model
 
 A system that answers questions about stock risk ("How risky is AAPL relative to its
 sector?", "Which stocks are highly correlated with NVDA and also high-risk?") by
